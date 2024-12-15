@@ -1,0 +1,756 @@
+# 3.1 코틀린에서 컬렉션 만들기
+
+### 코틀린 API를 사용하여 표준 자바 컬렉션을 생성할 수 있다
+
+```kotlin
+describe("코틀린 API로 컬렉션을 만든다") {
+    it("hashSetOf") {
+        val hashSet = hashSetOf(1, 2, 3)
+        val set = setOf(1, 2, 3)
+        println("hashSet: ${hashSet.javaClass}")
+        println("set: ${set.javaClass}")
+    }
+}
+
+// hashSet: class java.util.HashSet
+// set: class java.util.LinkedHashSet
+```
+
+- 표준 자바 컬렉션을 사용하면 자바 코드와 상호작용하기 쉽다.
+
+### 자바보다 더 많은 기능을 제공한다.
+
+```kotlin
+val strings = listOf("first", "second", "fourteenth")
+strings.last() // fourteenth
+```
+
+# 3.2 함수를 호출하기 쉽게 만들기
+
+- `joinToString()` 메서드를 발전시키는 방식으로 챕터를 진행한다
+
+```kotlin
+fun<T> joinToString(
+    collection: Collection<T>,
+    separator: String,
+    prefix: String,
+    postFix: String,
+): String {
+    val result = StringBuilder(prefix)
+
+    for ((index, element) in collection.withIndex()) {
+        if (index > 0) result.append(separator)
+        result.append(element)
+    }
+
+    result.append(postFix)
+    return result.toString()
+}
+```
+
+- 코틀린이 지원하는 기능을 사용하지 않고 구현한 함수
+- 제네릭한 컬렉션과 구분자, 접두사, 접미사를 파라미터로 받는다.
+    - **`collection: Collection<T>`**
+        - 변환 대상이 되는 컬렉션
+        - `Collection<T>` 타입을 받아, 리스트, 집합 등 다양한 컬렉션 타입을 처리
+        - 예: `listOf(1, 2, 3)` 또는 `setOf("a", "b", "c")`.
+    - **`separator: String`**
+        - 각 요소를 연결할 때 사용되는 문자열 구분자
+        - 기본값은 `", "` (콤마 + 공백)이며, 이를 변경하면 요소들 간의 구분 방식을 커스터마이징 할 수 있음
+        - 예: `separator = " | "`이면 요소가 `"1 | 2 | 3"`으로 연결됨
+    - **`prefix: String`**
+        - 결과 문자열의 앞부분에 추가되는 문자열
+        - 기본값은 빈 문자열 `""`이며, 이를 설정하여 시작 형식을 변경할 수 있음
+        - 예: `prefix = "["`이면 결과가 `"[1, 2, 3"`로 시작
+    - **`postFix: String`**
+        - 결과 문자열의 끝부분에 추가되는 문자열
+        - 기본값은 빈 문자열 `""`이며, 이를 설정하여 끝 형식을 변경
+        - 예: `postFix = "]"`이면 결과가 `"1, 2, 3]"`로 끝남
+
+### 3.2.1 이름 붙인 인자
+
+- `val actual = joinToString(list, ";", "(", ")")` → 각 인자로 전달한 문자열이 어떤 역할을 하는지 파악하기 어려움
+
+```kotlin
+joinToString(collection, separator = " ", prefix = " ", postfix = ".")
+```
+
+- 인자의 일부 또는 전체의 이름을 명시할 수 있다.
+- 호출 시 인자 중 어느 하나라도 이름을 명시하면 그 뒤에 오는 모든 인자는 이름을 명시해야함
+
+```kotlin
+describe("named argument") {
+    it("호출 시 인자 중 어느 하나라도 이름을 명시하면 그 뒤에 오는 모든 인자는 이름을 명시해야함") {
+        val list = listOf(1, 2, 3)
+        val actual = joinToString(list, separator = ",", "(", ")")
+        println("actual: $actual")
+    }
+}
+```
+
+- `코틀린 인 액션`에서 언급된 "호출 시 인자 중 어느 하나라도 이름을 명시하면 그 뒤에 오는 모든 인자는 이름을 명시해야 한다"는 **코틀린 초기 버전의 규칙임 (1.4)**
+- 따라서, 인자의 이름을 명시했더라도 뒤에 오는 인자들에 대해 이름을 명시하지 않아도 되는 것이 현재 코틀린의 동작 방식
+- 뒤에 오는 인자의 이름을 명시하는 것은 선택 사항이지만 가독성 측면에서 좋지 않음
+
+### 3.2.2 디폴트 파라미터 값
+
+```kotlin
+class FunctionCall : DescribeSpec({
+    describe("joinToString") {
+        it("call joinToString") {
+            val list = listOf(1, 2, 3)
+            val actual = joinToString(list, ";", "(", ")")
+            println("actual: $actual")
+        }
+    }
+})
+
+// actual: (1;2;3)
+```
+
+```kotlin
+fun<T> joinToString(
+    collection: Collection<T>,
+    separator: String = ", ",
+    prefix: String = "",
+    postFix: String = "",
+): String {
+		// 생략
+}
+
+// joinToString(list, ", ", "", "") >> 1, 2, 3 
+// joinToString(list) >> separator, prefix, postFix 생략
+// joinToString(list, ", ") >> prefix, postFix 생략
+```
+
+- 디폴트 파라미터 값은 함수를 호출하는 쪽이 아니라 함수를 선언 하는 쪽에서 지정됨
+
+자바에서 코틀린 함수의 디폴트 파라미터 값을 사용하기 위해 `@JvmOverloads` 애너테이션을 사용
+
+- 코틀린 컴파일러가 맨 마지막 파라미터로부터 파라미터를 하나씩 생략한 오버로딩한 자바 메서드를 제공해준다.
+
+### 3.2.3 최상위 함수와 프로퍼티
+
+- 자바에서 다양한 정적(static) 메서드를 모아두는 클래스가 생겨난다. (대표적으로 `Collections`)
+
+```java
+public static <T extends Comparable<? super T>> void sort(List<T> list) {
+    list.sort(null);
+}
+
+public static <T> void sort(List<T> list, Comparator<? super T> c) {
+    list.sort(c);
+}
+```
+
+- 정적 메서드만 모아두는 역할을 담당하고 특별한 상태나 인스턴스 메서드가 없는 클래스가 생겨나게됨
+- 코틀린에서는 이런 클래스를 무의미한 클래스로 보고, 함수를 소스 파일의 최상위 수준에 위치시킬수 있게 함
+
+최상위 수준 함수는 컴파일 시점에 새로운 클래스를 생성한다
+
+```java
+public final class JoinKt {
+   @NotNull
+   public static final String joinToString(@NotNull Collection collection, @NotNull String separator, @NotNull String prefix, @NotNull String postFix) {
+      Intrinsics.checkNotNullParameter(collection, "collection");
+      Intrinsics.checkNotNullParameter(separator, "separator");
+      Intrinsics.checkNotNullParameter(prefix, "prefix");
+      Intrinsics.checkNotNullParameter(postFix, "postFix");
+      StringBuilder result = new StringBuilder(prefix);
+      Iterator var5 = ((Iterable)collection).iterator();
+
+      Object element;
+      for(int var6 = 0; var5.hasNext(); result.append(element)) {
+         int index = var6++;
+         element = var5.next();
+         if (index > 0) {
+            result.append(separator);
+         }
+      }
+
+      result.append(postFix);
+      String var9 = result.toString();
+      Intrinsics.checkNotNullExpressionValue(var9, "toString(...)");
+      return var9;
+   }
+}
+```
+
+- 자바: `JoinKt.joinToString()`
+- 코틀린 최상위 함수를 포함하는 클래스의 이름을 바꾸고 싶다면 파일에 `@JvmName` 애너테이션을 추가
+
+```java
+@file:JvmName("StringFunctions")
+
+fun<T> joinToString(
+    collection: Collection<T>,
+    separator: String = ", ",
+    prefix: String = "",
+    postFix: String = "",
+): String {
+    // 생략
+}
+```
+
+- `@JvmName` 관련 설명은 10장 참고
+
+### 최상위 프로퍼티
+
+- 최상위 프로퍼티는 정적 필드에 저장된다.
+
+```java
+val UNIX_LINE_SEPARATOR = "\n" // getter를 사용해야함
+const val UNIX_LINE_SEPARATOR = "\n" // public static final 필드로 컴파일
+```
+
+- const 변경자를 추가하면 프로퍼티를 public static final 필드로 만들 수 있음
+- 원시타입과 String 타입에만 const로 지정할 수 있음
+
+# 3.3 확장함수
+
+- 확장함수: 어떤 클래스의 멤버 메서드인 것처럼 호출할 수 있지만, 그 클래스의 밖에 선언된 함수
+- 추가하려는 함수 이름 앞에 그 함수가 확장할 클래스의 이름을 덧붙이기만 하면 됨
+
+```kotlin
+fun String.lastChar(): Char = this.get(this.length - 1)
+fun String.lastChar(): Char = get(length - 1) // this 생력가능
+```
+
+- 수신객체 타입: 클래스 이름 (`String`)
+- 수신객체: 확장함수가 호출되는 대상이 되는 값 (`this`)
+- 다른 일반 클래스 멤버를 호출하는 구문과 똑같이 사용할 수 있다. → 마치 String 클래스에 정의된 함수인것처럼 사용 가능
+    - `“Kotlin”.lastChar()`
+
+### 3.3.1 임포트와 확장함수
+
+### 3.3.2 자바에서 확장함수 호출
+
+- 확장 함수는 수신 객체를 첫 번째 인자로 받는 정적 메서드 → 따라서 확장함수를 호출할 때 다른 어댑터 등 부가 비용이 들지 않는다.
+
+```kotlin
+// Java
+StringUtilKt.lastChar("Java");
+```
+
+### 3.3.3 확장 함수로 유틸리티 함수 정의
+
+- jointoString() 확장으로 정의
+
+```kotlin
+fun<T> Collection<T>.joinToString(
+    collection: Collection<T>,
+    separator: String = ", ",
+    prefix: String = "",
+    postFix: String = "",
+): String {
+    // 생략
+}
+
+list.joinToString()
+```
+
+- 확장함수는 정적 메서드 호출에 대한 문법적 편의의 뿐이다.
+
+### 3.3.4 확장함수는 오버라이드 할 수 없다
+
+```kotlin
+open class View {
+    open fun click() = println("View clicked")
+}
+
+class Button: View() {
+    override fun click() = println("Button clicked")
+}
+
+fun main() {
+    val view: View = Button()
+    view.click() // Button clicked
+}
+```
+
+- Button이 View의 하위 타입이기 때문에 View 타입 변수를 선언해도 Button 타입 변수를 그 변수에 대입할 수 있음
+
+- 확장함수는 클래스의 일부가 아님 → 클래스 밖에 선언
+- 따라서 확장함수의 이름과 파라미터가 같은 메서드를 정의해도 오버라이드 되지 않는다.
+    - 확장 함수를 호출할 때 수신객체로 지정한 변수의 정적 타입에 의해 어떤 확장함수가 호출될지 결정
+    - 수신객체에 저장된 객체의 동적 타입에 의해 확장함수가 결정되지 않음
+
+```kotlin
+fun View.showOff() = println("view")
+fun Button.showOff() = println("button")
+
+val view: View = Button()
+view.showOff() // view
+```
+
+- View가 가리키는 객체 타입은 Button이지만 view의 타입이 View이기 때문에 View의 확장함수가 호출된다.
+
+**확장 함수의 본질적인 정적 메서드 성격**
+
+- 확장 함수는 **컴파일 시점에 결정**되는 정적 메서드로 동작한다. 즉, 호출된 확장 함수는 **수신 객체의 정적 타입**(컴파일러가 알고 있는 타입)에 따라 선택
+- 예시에서 `view.showOff()`가 `View`의 확장 함수로 호출되는 이유는, `view`의 정적 타입이 `View`로 선언되었기 때문
+
+**오버라이딩 불가능의 이유**
+
+- 확장 함수는 **클래스 내부**에 선언된 것이 아니라 **외부**에서 정의되므로, 클래스 멤버 함수처럼 동적 디스패치를 지원
+- 따라서, 확장 함수와 동일한 이름과 파라미터를 가진 클래스 멤버 함수가 존재하면 항상 클래스의 멤버 함수가 우선 호출
+
+> 동적 디스패치(dynamic dispatch): 실행 시점에 객체 타입에 따라 동적으로 호출될 대상을 결정하는 방식
+정적 디스패치(static dispatch): 컴파일 시점에 알려진 변수 타입에 따라 정해진 메서드를 호출하는 방식
+> 
+
+### **확장 함수와 멤버 함수의 충돌**
+
+- 확장 함수와 클래스 멤버 함수가 동일한 이름을 가질 경우, **클래스 멤버 함수가 우선 호출**
+
+```kotlin
+class Sample {
+    fun hello() = "Member function"
+}
+
+fun Sample.hello() = "Extension function"
+
+val sample = Sample()
+println(sample.hello()) // "Member function" 출력
+```
+
+- 이를 통해 확장 함수는 클래스의 동작을 "덮어쓸 수 없으며", 단지 새로운 함수처럼 "추가"하는 역할만 할 수 있음
+
+### **확장 프로퍼티**
+
+- 확장 함수뿐만 아니라 **확장 프로퍼티**도 정의할 수 있습니다.
+    - 예:
+        
+        ```kotlin
+        val String.lastChar: Char
+            get() = this[length - 1]
+        
+        println("Kotlin".lastChar) // 'n' 출력
+        
+        ```
+        
+- 단, 확장 프로퍼티는 상태를 저장할 수 없으며 **단순히 Getter만 제공**할 수 있습니다.
+
+# 3.4 가변길이 인자, 중위함수 호출, 라이브러리 지원
+
+### 3.4.1 자바 컬렉션 API 확장
+
+- 앞 절에서 언급되었던 `last(), max()` 는 확장함수
+- 모든 확장함수를 소개하지 않음 → IDE 코드 완성 기능 활용
+
+확장함수 목록은 `_Collections.kt` 에서 확인할 수 있다.
+
+```kotlin
+@SinceKotlin("1.4")
+public fun <T : Comparable<T>> Iterable<T>.maxOrNull(): T? {
+    val iterator = iterator()
+    if (!iterator.hasNext()) return null
+    var max = iterator.next()
+    while (iterator.hasNext()) {
+        val e = iterator.next()
+        if (max < e) max = e
+    }
+    return max
+}
+
+public fun <T> List<T>.last(): T {
+    if (isEmpty())
+        throw NoSuchElementException("List is empty.")
+    return this[lastIndex]
+}
+```
+
+### 3.4.2 가변 인자 함수: 인자의 개수가 달라질 수 있는 함수
+
+- 가변 길이 인자는 메서드를 호출할 때 원하는 개수만큼 값을 인자로 넘기면 자바 컴파일러가 배열에 값들을 넣어주는 기능
+
+**자바의 가변인자와 스프레드 연산자**
+
+```java
+public class JavaSpreadExample {
+    public static void printNumbers(int... numbers) {
+        for (int number : numbers) {
+            System.out.print(number + " ");
+        }
+        System.out.println();
+    }
+
+    public static void main(String[] args) {
+        // 개별 값 전달
+        printNumbers(1, 2, 3, 4, 5);
+
+        // 배열 전달
+        int[] array = {6, 7, 8};
+        printNumbers(array); // 배열 요소가 가변인자로 전달됨
+    }
+}
+```
+
+- **스프레드 연산자 호출 시 사용되지 않음**: 배열 전달 시 별도의 연산자가 필요 없음
+- **가변인자 정의에만 사용**: `...`는 메서드 정의 시 가변인자를 나타내는 데 사용
+
+**코틀린의 스프레드 연산자**
+
+- 코틀린에서는 `*` 연산자를 사용하여 배열의 내용을 개별 요소로 분리하여 전달
+
+```kotlin
+fun printNumbers(vararg numbers: Int) {
+    for (number in numbers) {
+        print("$number ")
+    }
+    println()
+}
+
+fun main() {
+    // 개별 값 전달
+    printNumbers(1, 2, 3, 4, 5)
+
+    // 배열 전달
+    val array = intArrayOf(6, 7, 8)
+    printNumbers(*array) // 배열 요소를 스프레드 연산자로 분리하여 전달
+}
+```
+
+- **`vararg`로 가변인자 정의**: 가변인자를 지원하며, 배열이나 개별 값을 전달
+- **호출 시 `*` 연산자 필요**: 배열을 개별 요소로 전달하려면 **`*`**를 명시적으로 사용
+- **배열이나 리스트도 전달 가능**: `Array` 또는 `List`를 스프레드 연산자를 통해 가변인자로 전달해야함
+
+| **특징** | **자바** (`...`) | **코틀린** (`*`) |
+| --- | --- | --- |
+| **가변인자 정의** | `int... numbers` | `vararg numbers: Int` |
+| **배열 전달 시 스프레드 연산자** | 필요하지 않음 | `*` 연산자를 사용해야 함 |
+| **메서드 호출에서의 스프레드 연산자** | 호출 시 연산자 사용 불필요 | 배열 또는 컬렉션 전달 시 `*` 필요 |
+| **가변인자로 전달 가능한 데이터 타입** | 배열만 가능 | 배열과 리스트 둘 다 가능 |
+
+```kotlin
+// Java
+String[] words = {"Hello", "World"};
+System.out.println(String.join(" ", words)); // 배열 전달, 스프레드 연산자 필요 없음
+
+// Kotlin
+val words = arrayOf("Hello", "World")
+println(words.joinToString(" ")) // 배열 그대로 전달
+println(String.format("%s %s", *words)) // 개별 요소로 전달
+```
+
+### 3.4.3 중위 호출과 구조 분해 선언
+
+**중위호출**
+
+- 중위 호출의 대표적인 예시로 `mapOf()` 함수가 있음
+
+```kotlin
+val map = mapOf(1 to "one", 7 to "seven")
+```
+
+- 여기서 `to` 라는 단어가 **중위호출** 방식으로 일반 메서드를 호출한 것
+- `1.to(”one”)` 을 호출한것과 같은 동작
+
+중위 호출 시에는 수신 객체외 유일한 메서드 인자 사이에 메서드 이름을 넣는다. (공백이 들어가야함)
+
+```kotlin
+// to 메서드 - infix 변경자 + 유일한 파라미터
+public ***infix*** fun <A, B> A.to(***that: B***): Pair<A, B> = Pair(this, that)
+```
+
+- 함수를 중위호출을 사용하게 허용하고 싶으면 infix 변경자를 함수 선언 앞에 추가한다.
+- `to()` 메서드의 반환타입은 `Pair` 인스턴스이며, Pair는 코틀린 표준 라이브러리 → 두 원소로 이루어진 순서쌍을 표현한다.
+- `Pair`는 제네릭한 `to()` 메서드에 전달된 타입을 반환한다.
+
+**구조분해선언**
+
+- 객체나 데이터 클래스의 속성 값을 개별 변수로 쉽게 분리하여 할당할 수 있게 해주는 기능
+- 이를 통해 코드의 가독성을 높이고, 반복적인 getter 호출을 줄일 수 있다.
+
+구조분해 선언은 `val (a, b, c) = object` 형태로 사용 → `object`가 제공하는 속성을 `a`, `b`, `c` 변수에 각각 할당
+
+**데이터 클래스와 구조분해 선언**
+
+- 데이터 클래스는 자동으로 `componentN` 메서드(`component1()`, `component2()`, ...)를 생성하므로 구조분해 선언을 바로 사용할 수 있다.
+
+```kotlin
+data class Person(val name: String, val age: Int)
+
+fun main() {
+    val person = Person("Alice", 25)
+
+    // 구조분해 선언
+    val (name, age) = person // getter 사용울 줄일 수 있음
+    println("Name: $name, Age: $age")
+}
+```
+
+**리스트와 구조분해 선언**
+
+```kotlin
+fun main() {
+    val list = listOf("Kotlin", "Java", "Python")
+
+    val (first, second, third) = list
+    println("First: $first, Second: $second, Third: $third")
+}
+```
+
+- **주의점**
+    - 리스트에 할당할 변수의 개수가 리스트 크기보다 많으면 `IndexOutOfBoundsException`이 발생합니다.
+    - 리스트 크기보다 적은 변수만 할당하면 초과한 요소는 무시됩니다.
+
+자세한 내용은 7.4절에서…
+
+# 문자열과 정규식 다루기
+
+### 3.5.1 문자열 나누기
+
+```java
+// java
+String str = "12 . 345-6. A".split(".")
+```
+
+- `[12, 345-6, A]`  가 아닌 `[](빈배열)`이 반환된다.
+- `split`의 구분 문자열은 정규식이기 때문 → 마침표`.` 는 모든 문자를 나타내는 정규식으로 해석됨
+
+```java
+private String[] split(String regex, int limit, boolean withDelimiters) {
+    /* fastpath if the regex is a
+     * (1) one-char String and this character is not one of the
+     *     RegEx's meta characters ".$|()[{^?*+\\", or
+     * (2) two-char String and the first char is the backslash and
+     *     the second is not the ascii digit or ascii letter.
+     */
+    char ch = 0;
+    if (((regex.length() == 1 &&
+            ".$|()[{^?*+\\".indexOf(ch = regex.charAt(0)) == -1) ||
+            (regex.length() == 2 &&
+                    regex.charAt(0) == '\\' &&
+                    (((ch = regex.charAt(1))-'0')|('9'-ch)) < 0 &&
+                    ((ch-'a')|('z'-ch)) < 0 &&
+                    ((ch-'A')|('Z'-ch)) < 0)) &&
+            (ch < Character.MIN_HIGH_SURROGATE ||
+                    ch > Character.MAX_LOW_SURROGATE))
+    {
+        // All the checks above can potentially be constant folded by
+        // a JIT/AOT compiler when the regex is a constant string.
+        // That requires method inlining of the checks, which is only
+        // possible when the actual split logic is in a separate method
+        // because the large split loop can usually not be inlined.
+        return split(ch, limit, withDelimiters);
+    }
+    Pattern pattern = Pattern.compile(regex);
+    return withDelimiters
+            ? pattern.splitWithDelimiters(this, limit)
+            : pattern.split(this, limit);
+}
+```
+
+- **`regex`**: 분리에 사용될 정규식.
+- **`limit`**: 분리할 최대 문자열 조각 수 (`limit <= 0`이면 제한 없음).
+- **`withDelimiters`**: 구분 문자(정규식에 매칭된 값)를 결과에 포함할지 여부.
+- `split(”.”)` → `split(”.”, 0, false)` 로 호출
+
+> `Pattern` 클래스를 사용하여 정규식을 컴파일하고 이를 사용해 문자열을 분리
+> 
+
+`코틀린에서는 split 확장함수를 제공한다.`
+
+- 정규식을 파라미터로 받는 함수 String이 아는 Regex 타입을 받는다.
+- 따라서 코틀린은에서는 split 함수에 정규식과 일반 텍스트를 선택해서 전달 할 수 있다.
+
+```java
+// 정규식을 명시적으로 만들어서 전달
+"12.345-6.A".split("\\.".toRegex()) 
+public inline fun CharSequence.split(regex: Regex, limit: Int = 0): List<String> = regex.split(this, limit)
+
+// String을 전달 
+"12.345-6.A".split(".") 
+public fun CharSequence.split(vararg delimiters: String, ignoreCase: Boolean = false, limit: Int = 0): List<String> {
+    if (delimiters.size == 1) {
+        val delimiter = delimiters[0]
+        if (!delimiter.isEmpty()) {
+            return split(delimiter, ignoreCase, limit)
+        }
+    }
+
+    return rangesDelimitedBy(delimiters, ignoreCase = ignoreCase, limit = limit).asIterable().map { substring(it) }
+}
+```
+
+### 3.5.2 정규식과 3중 따옴표로 묶은 문자열
+
+- 3중 따옴표 문자열을 사용해 정규식을 작성
+- 3중 따옴표 문자열에서는 역슬래시 등 어떤 문자도 이스케이프 할 필요 없음
+
+```kotlin
+// 디렉토리, 파일이름, 확장자로 분리하는 정규식
+"""(.+)/(.+)\.(.+)""".toRegex()
+```
+
+- 일반적으로 마침표를 이스케이프하려면 `\\.` 를 사용해야 하지만 3중 따옴표 문자열에서는 `\.`라고 쓰면됨
+- parsePath 함수의 구현을 따르며 7.4절에서 자세한 설명
+
+### 3.5.3 여러줄 3중 따옴표 문자열
+
+- 3중 따옴표 문자열은 문자열 이스케이프를 피하기 위해서 사용되지 않는다.
+- 3중 따옴표를 쓰면 줄 바꿈이 들어있는 프로그램 텍스트를 쉽게 만들 수 있음
+
+```kotlin
+val text = """
+    This is a "raw" string.
+    It contains no need for escaping: \n, \t, \.
+"""
+
+// 출력
+This is a "raw" string.
+It contains no need for escaping: \n, \t, \.
+```
+
+# 3.6 코드 다듬기: 로컬 함수
+
+**로컬 함수**는 함수 안에서 선언된 **중첩 함수**로, 특정 함수 내에서만 사용되는 함수
+
+로컬 함수는 외부 함수의 변수나 상태에 접근할 수 있다.
+
+로컬함수의 특징
+
+1. 흔히 발생하는 중복을 로컬 함수를 통해 제거할 수 있다.
+
+```kotlin
+fun saveUser(user: User) {
+		fun validate(value: String, fieldName: String) {
+				// 검증로직 구현
+		}
+		
+		validate(user.name, "Name")
+		validate(user.address, "Address")
+}
+```
+
+1. 로컬 함수는 외부 함수의 변수를 사용할 수 있다
+
+```kotlin
+fun calculateStatistics(numbers: List<Int>): Pair<Int, Int> {
+    val sum = numbers.sum()
+
+    fun average(): Int {
+        return if (numbers.isNotEmpty()) sum / numbers.size else 0
+    }
+
+    return sum to average()
+}
+```
+
+- 로컬 함수 `average`는 외부 함수 `calculateStatistics`의 `sum` 변수에 접근 가능
+- 로컬 함수는 외부 함수의 계산 결과를 기반으로 내부 로직을 수행
+
+1. 재귀호출 가능
+
+```kotlin
+fun factorial(n: Int): Int {
+    // 로컬 함수
+    fun calculate(current: Int, accumulator: Int): Int {
+        return if (current <= 1) accumulator
+        else calculate(current - 1, accumulator * current)
+    }
+
+    return calculate(n, 1)
+}
+
+fun main() {
+    println(factorial(5)) // 120
+}
+```
+
+- 로컬 함수 `calculate`는 팩토리얼 계산을 위한 재귀 호출을 수행
+- 외부 함수 `factorial`은 재귀 호출의 복잡성을 감추어 간결한 인터페이스를 제공
+
+4.  캡슐화를 통한 가독성 향상
+
+```kotlin
+fun processUserInput(input: String) {
+    // 로컬 함수
+    fun isValid(input: String): Boolean {
+        return input.isNotBlank() && input.all { it.isLetterOrDigit() }
+    }
+
+    if (!isValid(input)) {
+        throw IllegalArgumentException("Invalid input: $input")
+    }
+
+    println("Processing: $input")
+}
+
+fun main() {
+    processUserInput("ValidInput123") // 정상 동작
+    // processUserInput("Invalid Input!") // 예외 발생
+}
+
+```
+
+- 로컬 함수 `isValid`는 입력 검증 로직을 캡슐화하여 `processUserInput`의 가독성 향상
+
+# 재귀
+
+- 재귀하니까 예전에 함수형 공부했던게 생각나서 정리
+- 함수형에서는 이터레이션 대신 재귀호출을 사용하는 경우가 있음 → 함수형 빠돌이
+- 재귀호출은 무한루프, 스택오버플로우 등 문제로 프로덕션에서 사용이 지양됨
+- **꼬리재귀함수최적화**를 통해 매우 깊은 재귀 호출도 안전하게 수행할 수 있음
+
+코틀린은 꼬리재귀최적화(Tail Call Optimization)를 제공
+
+- 자바는 제공하지 않는 기능인데, 높은버전에서는 지원할 수도 있음
+
+### **꼬리 재귀란?**
+
+- 꼬리 재귀는 **함수의 마지막 동작이 자기 자신을 호출하는 재귀 함수**
+- 꼬리 재귀 최적화는 컴파일러가 재귀 호출을 반복문으로 변환하여 스택을 사용하지 않게 하는 기법
+- 이 최적화를 통해 매우 깊은 재귀 호출도 안전하게 수행할 수 있다.
+
+### 코틀린에서 꼬리 재귀 함수 사용 방법
+
+코틀린에서 꼬리 재귀 최적화를 적용하려면 **`tailrec` 키워드**를 함수 앞에 붙여야함
+
+```kotlin
+tailrec fun factorial(n: Int, accumulator: Int = 1): Int {
+    return if (n <= 1) accumulator
+    else factorial(n - 1, accumulator * n)
+}
+
+fun main() {
+    println(factorial(5)) // 120
+}
+```
+
+- `tailrec` 키워드를 붙인 함수는 컴파일러가 꼬리 재귀 최적화를 시도
+- 위 함수는 마지막으로 자기 자신을 호출하므로 꼬리 재귀로 최적화될 수 있다.
+- 컴파일러가 재귀 호출을 반복문으로 변환하여 스택 사용을 제거 → 컴파일러가 재귀를 반복문으로 변환
+
+### **3. 꼬리 재귀 최적화의 조건**
+
+1. **꼬리 호출이어야 함**:
+- 함수의 **마지막 동작이 재귀 호출**이어야 함
+- 호출 이후에 다른 연산이 있으면 최적화되지 않는다.
+1. **`tailrec` 키워드를 붙여야 함**:
+- 컴파일러가 최적화를 시도하도록 `tailrec` 키워드를 사용해야함
+- 키워드가 없으면 최적화가 적용되지 않는다.
+
+### **4. 반복문 vs 재귀**
+
+| **특징** | **반복문** | **꼬리 재귀** |
+| --- | --- | --- |
+| 가독성 | 단순 반복 로직에 적합 | 재귀적인 문제를 직관적으로 표현 가능 |
+| 스택 사용 | 스택 사용하지 않음 | 최적화 시 스택 사용하지 않음 |
+| 코드 간결성 | 반복문이 길어질 수 있음 | 코드가 간결하고 가독성이 높음 |
+| 최적화 필요 여부 | 별도 최적화 필요 없음 | `tailrec` 키워드로 명시적으로 최적화 요청 |
+
+### 5. 결론
+
+Stream API가 제일 편하고 좋다고 생각합니다.
+
+- 함수 커링
+
+```kotlin
+
+val path: (Int) -> String = { id -> "/api/${id}" }
+
+val path = fun(id: Int) = "/api/${id}"
+path(1)
+```
